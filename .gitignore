@@ -1,0 +1,53 @@
+ 
+# General
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.log
+*.swp
+*.sln.docstates
+*.ncrunchsolution
+*.ncrunchproject
+*.cachefile
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# NuGet Packages
+*.nupkg
+.nuget/
+NuGet.exe
+nuget.exe
+
+# Local development
+appsettings.Development.json
+
+# Database files
+*.mdf
+*.ldf
+*.sdf
+
+# VS Code
+.history/
+
+# Rider
+.idea/
+
+# macOS
+.DS_Store

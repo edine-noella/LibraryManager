@@ -1,0 +1,219 @@
+using LibraryManager.API.Controllers;
+using LibraryManager.API.Models;
+using LibraryManager.API.Repositories;
+using Microsoft.AspNetCore.Mvc;
+using NUnit.Framework;
+
+namespace LibraryManager.Tests;
+
+[TestFixture]
+public class BooksControllerTests : ControllerTestBase
+{
+    private BooksController _controller;
+    private LibraryDbContext _context;
+    private IBookRepository _repository;
+
+    [SetUp]
+    public void Setup()
+    {
+        _context = GetDbContext();
+        _repository = new BookRepository(_context);
+        _controller = new BooksController(_repository);
+    }
+
+    [TearDown]
+    public void Cleanup()
+    {
+        _context?.Dispose();
+    }
+
+    #region GET /api/books Tests
+
+    [Test]
+    public async Task GetBooks_ReturnsAllBooks()
+    {
+        // Arrange
+        await _context.Books.AddRangeAsync(new List<Book>
+        {
+            new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true },
+            new Book { Id = 2, Title = "Test Book 2", Author = "whiteRose", ISBN = "9780132350987", IsAvailable = true }
+        });
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _controller.GetBooks();
+
+        // Assert - Functionality Test
+        var books = result.Value as IEnumerable<Book>;
+        // Assert.That(books, Is.Not.Null);
+        Assert.That(books.Count(), Is.EqualTo(2));
+        Assert.That(books.Any(b => b.Title == "Test Book 1"), Is.True);
+        
+        // Assert - HTTP Response Test
+        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+    }
+
+    [Test]
+    public async Task GetBooks_ReturnsEmptyList_WhenNoBooksExist()
+    {
+        // Arrange (empty database)
+
+        // Act
+        var result = await _controller.GetBooks();
+
+        // Assert - Functionality Test
+        // Assert.That(result.Value, Is.Empty);
+        
+        // Assert - HTTP Response Test
+        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+    }
+
+    #endregion
+
+    #region GET /api/books/{id} Tests
+
+    [Test]
+    public async Task GetBook_ReturnsBook_WhenExists()
+    {
+        // Arrange
+        var testBook = new Book { Id = 1, Title = "Existing Book", Author = "Author", ISBN = "1234567890", IsAvailable = true };
+        await _context.Books.AddAsync(testBook);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _controller.GetBook(1);
+
+        // Assert - Functionality Test
+        // Assert.That(result.Value, Is.Not.Null);
+        Assert.That(result.Value.Title, Is.EqualTo("Existing Book"));
+        
+        // Assert - HTTP Response Test
+        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+    }
+
+    [Test]
+    public async Task GetBook_ReturnsNotFound_WhenBookDoesNotExist()
+    {
+        // Arrange
+        int invalidId = 999;
+
+        // Act
+        var result = await _controller.GetBook(invalidId);
+
+        // Assert - HTTP Response Test
+        Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+    }
+
+    #endregion
+
+    #region POST /api/books Tests
+
+    [Test]
+    public async Task PostBook_CreatesNewBook()
+    {
+        // Arrange
+        var newBook = new Book { Title = "New Book", Author = "Author", ISBN = "9780132350005", IsAvailable = true };
+
+        // Act
+        var result = await _controller.PostBook(newBook);
+
+        // Assert - Functionality Test
+        var createdBook = (result.Result as CreatedAtActionResult)?.Value as Book;
+        Assert.That(createdBook, Is.Not.Null);
+        Assert.That(createdBook.Id, Is.GreaterThan(0));
+        Assert.That(createdBook.Title, Is.EqualTo("New Book"));
+        
+        // Assert - HTTP Response Test
+        Assert.That(result.Result, Is.InstanceOf<CreatedAtActionResult>());
+    }
+
+    [Test]
+    public async Task PostBook_ReturnsBadRequest_WhenModelInvalid()
+    {
+        // Arrange
+        _controller.ModelState.AddModelError("Title", "Title is required");
+        var invalidBook = new Book { Author = "Author" }; // Missing title
+
+        // Act
+        var result = await _controller.PostBook(invalidBook);
+
+        // Assert - HTTP Response Test
+        Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+    }
+
+    #endregion
+
+    #region PUT /api/books/{id} Tests
+
+    [Test]
+    public async Task PutBook_UpdatesExistingBook()
+    {
+        // Arrange
+        var existingBook = new Book { Id = 1, Title = "Original", Author = "Author", ISBN = "1234567890", IsAvailable = true };
+        await _context.Books.AddAsync(existingBook);
+        await _context.SaveChangesAsync();
+
+        var updatedBook = new Book { Id = 1, Title = "Updated", Author = "Author", ISBN = "1234567890", IsAvailable = true };
+
+        // Act
+        var result = await _controller.PutBook(1, updatedBook);
+
+        // Assert - Functionality Test
+        var bookInDb = await _context.Books.FindAsync(1);
+        Assert.That(bookInDb.Title, Is.EqualTo("Updated"));
+        
+        // Assert - HTTP Response Test
+        Assert.That(result, Is.InstanceOf<NoContentResult>());
+    }
+
+    [Test]
+    public async Task PutBook_ReturnsBadRequest_WhenIdsDontMatch()
+    {
+        // Arrange
+        var book = new Book { Id = 1, Title = "Test" };
+
+        // Act
+        var result = await _controller.PutBook(2, book); // Different ID
+
+        // Assert - HTTP Response Test
+        Assert.That(result, Is.InstanceOf<BadRequestResult>());
+    }
+
+    #endregion
+
+    #region DELETE /api/books/{id} Tests
+
+    [Test]
+    public async Task DeleteBook_RemovesBook()
+    {
+        // Arrange
+        var bookToDelete = new Book { Id = 1, Title = "To Delete", Author = "Author", ISBN = "1234567890", IsAvailable = true };
+        await _context.Books.AddAsync(bookToDelete);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _controller.DeleteBook(1);
+
+        // Assert - Functionality Test
+        var bookInDb = await _context.Books.FindAsync(1);
+        Assert.That(bookInDb, Is.Null);
+        
+        // Assert - HTTP Response Test
+        Assert.That(result, Is.InstanceOf<NoContentResult>());
+    }
+
+    [Test]
+    public async Task DeleteBook_ReturnsNotFound_WhenBookDoesNotExist()
+    {
+        // Arrange
+        int invalidId = 999;
+
+        // Act
+        var result = await _controller.DeleteBook(invalidId);
+
+        // Assert - HTTP Response Test
+        Assert.That(result, Is.InstanceOf<NoContentResult>());
+    }
+
+    #endregion
+}

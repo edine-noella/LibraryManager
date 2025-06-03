@@ -1,0 +1,6 @@
+@LibraryManager.API_HostAddress = http://localhost:5163
+
+GET {{LibraryManager.API_HostAddress}}/library/
+Accept: application/json
+
+###
