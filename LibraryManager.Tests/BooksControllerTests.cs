@@ -39,6 +39,7 @@ public class BooksControllerTests : ControllerTestBase
             new Book { Id = 2, Title = "Test Book 2", Author = "whiteRose", ISBN = "9780132350987", IsAvailable = true }
         });
         await _context.SaveChangesAsync();
+        
 
         // Act
         var result = await _controller.GetBooks();
@@ -62,8 +63,9 @@ public class BooksControllerTests : ControllerTestBase
     {
         // Arrange
         var testBook = new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true };
-        await _context.Books.AddAsync(testBook);
-        await _context.SaveChangesAsync();
+        // await _context.Books.AddAsync(testBook);
+        // await _context.SaveChangesAsync();
+        await _repository.AddBook(testBook);
 
         // Act
         var result = await _controller.GetBook(1);
@@ -129,8 +131,9 @@ public class BooksControllerTests : ControllerTestBase
     {
         // Arrange
         var existingBook = new Book { Id = 1, Title = "Test Book 1", Author = "keke", ISBN = "9780132350675", IsAvailable = true };
-        await _context.Books.AddAsync(existingBook);
-        await _context.SaveChangesAsync();
+        // await _context.Books.AddAsync(existingBook);
+        // await _context.SaveChangesAsync();
+        await  _repository.AddBook(existingBook);
 
         existingBook.Title = "Updated";
         existingBook.ISBN = "9780132350687";
@@ -164,8 +167,9 @@ public class BooksControllerTests : ControllerTestBase
     {
         // Arrange
         var bookToDelete = new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true };
-        await _context.Books.AddAsync(bookToDelete);
-        await _context.SaveChangesAsync();
+        // await _context.Books.AddAsync(bookToDelete);
+        // await _context.SaveChangesAsync();
+        await _repository.AddBook(bookToDelete);
 
         // Act
         var result = await _controller.DeleteBook(1);
