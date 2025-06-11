@@ -18,7 +18,8 @@ namespace LibraryManager.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Book>>> GetBooks()
         {
-            return Ok(await _repository.GetAllBooks());
+            var books = await _repository.GetAllBooks();
+            return Ok(books ?? new List<Book>()); 
         }
 
         [HttpGet("{id}")]
@@ -60,6 +61,9 @@ namespace LibraryManager.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBook(int id)
         {
+            var book = await _repository.GetBookById(id);
+            if (book == null) return NotFound();
+            
             await _repository.DeleteBook(id);
             return NoContent();
         }

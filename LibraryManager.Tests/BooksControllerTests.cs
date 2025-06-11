@@ -128,17 +128,15 @@ public class BooksControllerTests : ControllerTestBase
     public async Task PutBook_UpdatesExistingBook()
     {
         // Arrange
-        var existingBook = new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true };
+        var existingBook = new Book { Id = 1, Title = "Test Book 1", Author = "keke", ISBN = "9780132350675", IsAvailable = true };
         await _context.Books.AddAsync(existingBook);
         await _context.SaveChangesAsync();
 
-        // Clear the tracking to avoid conflict
-        _context.Entry(existingBook).State = EntityState.Detached;
-
-        var updatedBook = new Book { Id = 1, Title = "Updated", Author = "suzume", ISBN = "9780132350675", IsAvailable = true };
+        existingBook.Title = "Updated";
+        existingBook.ISBN = "9780132350687";
 
         // Act
-        var result = await _controller.PutBook(1, updatedBook);
+        var result = await _controller.PutBook(1, existingBook);
 
         // Assert
         var bookInDb = await _context.Books.FindAsync(1);
