@@ -1,3 +1,4 @@
+using FluentAssertions;
 using LibraryManager.API.Controllers;
 using LibraryManager.API.Models;
 using LibraryManager.API.Repositories;
@@ -28,7 +29,6 @@ public class BooksControllerTests : ControllerTestBase
     }
 
     // GET /api/books Tests -------------------------------------------
-
     [Test]
     public async Task GetBooks_ReturnsAllBooks()
     {
@@ -40,44 +40,40 @@ public class BooksControllerTests : ControllerTestBase
         });
         await _context.SaveChangesAsync();
         
-
         // Act
         var result = await _controller.GetBooks();
 
         // Assert 
-        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-    
+        result.Result.Should().BeOfType<OkObjectResult>();
+        
         var okResult = result.Result as OkObjectResult;
         var books = okResult.Value as IEnumerable<Book>;
-    
-        Assert.That(books, Is.Not.Null);
-        Assert.That(books.Count(), Is.EqualTo(2));
-        Assert.That(books.Any(b => b.Title == "Test Book 1"), Is.True);
+        
+        books.Should()
+            .NotBeNull()
+            .And.HaveCount(2)
+            .And.Contain(b => b.Title == "Test Book 1");
     }
 
-   
     // GET /api/books/{id} Tests ------------------------------------
-    
     [Test]
     public async Task GetBook_ReturnsBook_WhenExists()
     {
         // Arrange
         var testBook = new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true };
-        // await _context.Books.AddAsync(testBook);
-        // await _context.SaveChangesAsync();
         await _repository.AddBook(testBook);
 
         // Act
         var result = await _controller.GetBook(1);
 
-        // Assert - Check ActionResult wrapper first
-        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
-    
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        
         var okResult = result.Result as OkObjectResult;
         var book = okResult.Value as Book;
-    
-        Assert.That(book, Is.Not.Null);
-        Assert.That(book.Title, Is.EqualTo("Test Book 1"));
+        
+        book.Should().NotBeNull();
+        book.Title.Should().Be("Test Book 1");
     }
     
     [Test]
@@ -90,11 +86,10 @@ public class BooksControllerTests : ControllerTestBase
         var result = await _controller.GetBook(invalidId);
 
         // Assert
-        Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+        result.Result.Should().BeOfType<NotFoundResult>();
     }
     
     // POST /api/books Tests ------------------------------------
-    
     [Test]
     public async Task PostBook_CreatesNewBook()
     {
@@ -105,9 +100,9 @@ public class BooksControllerTests : ControllerTestBase
         var result = await _controller.PostBook(newBook);
 
         // Assert
+        result.Result.Should().BeOfType<CreatedAtActionResult>();
         var createdBook = (result.Result as CreatedAtActionResult)?.Value as Book;
-        Assert.That(createdBook.Id, Is.GreaterThan(0));
-        Assert.That(result.Result, Is.InstanceOf<CreatedAtActionResult>());
+        createdBook.Id.Should().BePositive();
     }
     
     [Test]
@@ -121,19 +116,16 @@ public class BooksControllerTests : ControllerTestBase
         var result = await _controller.PostBook(invalidBook);
 
         // Assert
-        Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+        result.Result.Should().BeOfType<BadRequestObjectResult>();
     }
     
     // PUT /api/books/{id} Tests-------------------------------------------
-    
     [Test]
     public async Task PutBook_UpdatesExistingBook()
     {
         // Arrange
         var existingBook = new Book { Id = 1, Title = "Test Book 1", Author = "keke", ISBN = "9780132350675", IsAvailable = true };
-        // await _context.Books.AddAsync(existingBook);
-        // await _context.SaveChangesAsync();
-        await  _repository.AddBook(existingBook);
+        await _repository.AddBook(existingBook);
 
         existingBook.Title = "Updated";
         existingBook.ISBN = "9780132350687";
@@ -143,8 +135,8 @@ public class BooksControllerTests : ControllerTestBase
 
         // Assert
         var bookInDb = await _context.Books.FindAsync(1);
-        Assert.That(bookInDb.Title, Is.EqualTo("Updated"));
-        Assert.That(result, Is.InstanceOf<NoContentResult>());
+        bookInDb.Title.Should().Be("Updated");
+        result.Should().BeOfType<NoContentResult>();
     }
     
     [Test]
@@ -157,18 +149,15 @@ public class BooksControllerTests : ControllerTestBase
         var result = await _controller.PutBook(2, book);
 
         // Assert
-        Assert.That(result, Is.InstanceOf<BadRequestResult>());
+        result.Should().BeOfType<BadRequestResult>();
     }
     
     // DELETE /api/books/{id} Tests --------------------------
-    
     [Test]
     public async Task DeleteBook_RemovesBook()
     {
         // Arrange
         var bookToDelete = new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true };
-        // await _context.Books.AddAsync(bookToDelete);
-        // await _context.SaveChangesAsync();
         await _repository.AddBook(bookToDelete);
 
         // Act
@@ -176,8 +165,8 @@ public class BooksControllerTests : ControllerTestBase
 
         // Assert
         var bookInDb = await _context.Books.FindAsync(1);
-        Assert.That(bookInDb, Is.Null);
-        Assert.That(result, Is.InstanceOf<NoContentResult>());
+        bookInDb.Should().BeNull();
+        result.Should().BeOfType<NoContentResult>();
     }
     
     [Test]
@@ -190,6 +179,6 @@ public class BooksControllerTests : ControllerTestBase
         var result = await _controller.DeleteBook(invalidId);
 
         // Assert
-        Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        result.Should().BeOfType<NotFoundResult>();
     }
 }
