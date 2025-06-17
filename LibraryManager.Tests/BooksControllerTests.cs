@@ -4,28 +4,25 @@ using LibraryManager.API.Models;
 using LibraryManager.API.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using NUnit.Framework;
 
 namespace LibraryManager.Tests;
 
-public class BooksControllerTests : ControllerTestBase
+public class BooksControllerTests
 {
     private BooksController _controller;
-    private LibraryDbContext _context;
-    private IBookRepository _repository;
+    // private LibraryDbContext _context;
+    // private IBookRepository _repository;
+    private  Mock<IBookRepository> _bookRepositoryMock;
+
 
     [SetUp]
     public void Setup()
     {
-        _context = GetDbContext();
-        _repository = new BookRepository(_context);
-        _controller = new BooksController(_repository);
-    }
-
-    [TearDown]
-    public void Cleanup()
-    {
-        _context?.Dispose();
+        // _context = GetDbContext();
+        _bookRepositoryMock = new Mock<IBookRepository>();
+        _controller = new BooksController(_bookRepositoryMock.Object);
     }
 
     // GET /api/books Tests -------------------------------------------
@@ -33,12 +30,14 @@ public class BooksControllerTests : ControllerTestBase
     public async Task GetBooks_ReturnsAllBooks()
     {
         // Arrange
-        await _context.Books.AddRangeAsync(new List<Book>
+        var testBooks = new List<Book>
         {
             new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true },
             new Book { Id = 2, Title = "Test Book 2", Author = "whiteRose", ISBN = "9780132350987", IsAvailable = true }
-        });
-        await _context.SaveChangesAsync();
+        };
+        
+        _bookRepositoryMock.Setup(x => x.GetAllBooks())
+            .ReturnsAsync(testBooks);
         
         // Act
         var result = await _controller.GetBooks();
@@ -60,20 +59,25 @@ public class BooksControllerTests : ControllerTestBase
     public async Task GetBook_ReturnsBook_WhenExists()
     {
         // Arrange
-        var testBook = new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true };
-        await _repository.AddBook(testBook);
+        var testBook = new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true 
+        };
+        
+        _bookRepositoryMock.Setup(x => x.GetBookById(1))
+            .ReturnsAsync(testBook);
 
         // Act
         var result = await _controller.GetBook(1);
 
         // Assert
         result.Result.Should().BeOfType<OkObjectResult>();
-        
+    
         var okResult = result.Result as OkObjectResult;
         var book = okResult.Value as Book;
-        
+    
         book.Should().NotBeNull();
         book.Title.Should().Be("Test Book 1");
+        
+        _bookRepositoryMock.Verify(x => x.GetBookById(1), Times.Once);
     }
     
     [Test]
@@ -125,18 +129,20 @@ public class BooksControllerTests : ControllerTestBase
     {
         // Arrange
         var existingBook = new Book { Id = 1, Title = "Test Book 1", Author = "keke", ISBN = "9780132350675", IsAvailable = true };
-        await _repository.AddBook(existingBook);
+        var updatedBook = new Book { Id = 1, Title = "Updated", Author = "keke", ISBN = "9780132350687", IsAvailable = true };
 
-        existingBook.Title = "Updated";
-        existingBook.ISBN = "9780132350687";
+        _bookRepositoryMock.Setup(x => x.GetBookById(1))
+            .ReturnsAsync(existingBook);
+        
+        _bookRepositoryMock.Setup(x => x.UpdateBook(It.IsAny<Book>()))
+            .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _controller.PutBook(1, existingBook);
+        var result = await _controller.PutBook(1, updatedBook);
 
         // Assert
-        var bookInDb = await _context.Books.FindAsync(1);
-        bookInDb.Title.Should().Be("Updated");
         result.Should().BeOfType<NoContentResult>();
+        _bookRepositoryMock.Verify(x => x.UpdateBook(It.Is<Book>(b => b.Title == "Updated")), Times.Once);
     }
     
     [Test]
@@ -157,16 +163,29 @@ public class BooksControllerTests : ControllerTestBase
     public async Task DeleteBook_RemovesBook()
     {
         // Arrange
-        var bookToDelete = new Book { Id = 1, Title = "Test Book 1", Author = "suzume", ISBN = "9780132350675", IsAvailable = true };
-        await _repository.AddBook(bookToDelete);
+        var bookToDelete = new Book { Id = 1, Title = "Test Book 1" };
+    
+        // Properly mock repository methods
+        _bookRepositoryMock.Setup(x => x.GetBookById(1))
+            .ReturnsAsync(bookToDelete);
+    
+        _bookRepositoryMock.Setup(x => x.DeleteBook(1))
+            .Returns(Task.CompletedTask)
+            .Verifiable();
 
         // Act
         var result = await _controller.DeleteBook(1);
 
         // Assert
-        var bookInDb = await _context.Books.FindAsync(1);
-        bookInDb.Should().BeNull();
         result.Should().BeOfType<NoContentResult>();
+        
+        _bookRepositoryMock.Verify(x => x.DeleteBook(1), Times.Once);
+    
+        _bookRepositoryMock.Setup(x => x.GetBookById(1))
+            .ReturnsAsync((Book)null);
+    
+        var bookInDb = await _bookRepositoryMock.Object.GetBookById(1);
+        bookInDb.Should().BeNull();
     }
     
     [Test]
